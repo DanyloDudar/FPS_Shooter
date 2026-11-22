@@ -1,0 +1,10 @@
+/Binaries/
+/DerivedDataCache/
+/Intermediate/
+/Saved/
+/.vs/
+/.idea/
+/Plugins/Developer/RiderLink/
+/Content/
+*.sln
+*.slnx
