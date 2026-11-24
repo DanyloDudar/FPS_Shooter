@@ -1,0 +1,102 @@
+// Copyright Dudar Danylo
+
+
+#include "Character/ShooterCharacter.h"
+
+#include "Camera/CameraComponent.h"
+#include "Combat/CombatComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "EnhancedInputComponent.h"
+
+AShooterCharacter::AShooterCharacter()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	
+	GetCharacterMovement()->MovementState.bCanCrouch = true;
+	
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>("SpringArm");
+	SpringArm->SetupAttachment(GetRootComponent());
+	SpringArm->TargetArmLength = 0.f;
+	SpringArm->bEnableCameraLag = true;
+	SpringArm->CameraLagSpeed = 15.f;
+	SpringArm->bUsePawnControlRotation = true;
+	
+	FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>("FirstPersonCamera");
+	FirstPersonCamera->SetupAttachment(SpringArm);
+	FirstPersonCamera->bUsePawnControlRotation = false;
+	
+	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>("Mesh1P");
+	Mesh1P->SetupAttachment(FirstPersonCamera);
+	Mesh1P->bOnlyOwnerSee = true;
+	Mesh1P->bOwnerNoSee = false;
+	Mesh1P->CastShadow = false;
+	Mesh1P->bReceivesDecals = false;
+	Mesh1P->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+	Mesh1P->PrimaryComponentTick.TickGroup = TG_PrePhysics;
+	
+	GetMesh()->bOnlyOwnerSee = false;
+	GetMesh()->bOwnerNoSee = true;
+	GetMesh()->bReceivesDecals = false;
+	
+	CombatComponent = CreateDefaultSubobject<UCombatComponent>("CombatComponent");
+	CombatComponent->SetIsReplicated(true);
+	
+}
+
+void AShooterCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+
+void AShooterCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+}
+
+void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	
+	UEnhancedInputComponent* ShooterInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent);
+	
+	ShooterInputComponent->BindAction(CycleWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_CycleWeapon);
+	ShooterInputComponent->BindAction(FireWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_FireWeapon_Pressed);
+	ShooterInputComponent->BindAction(FireWeaponAction, ETriggerEvent::Completed, this, &ThisClass::Input_FireWeapon_Released);
+	ShooterInputComponent->BindAction(AimWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_AimWeapon_Pressed);
+	ShooterInputComponent->BindAction(AimWeaponAction, ETriggerEvent::Completed, this, &ThisClass::Input_AimWeapon_Released);
+	ShooterInputComponent->BindAction(ReloadWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_ReloadWeapon);
+	
+}
+
+void AShooterCharacter::Input_CycleWeapon()
+{
+	CombatComponent->Initiate_CycleWeapon();
+}
+
+void AShooterCharacter::Input_ReloadWeapon()
+{
+	CombatComponent->Initiate_ReloadWeapon();
+}
+
+void AShooterCharacter::Input_FireWeapon_Pressed()
+{
+	CombatComponent->Initiate_FireWeapon_Pressed();
+}
+
+void AShooterCharacter::Input_FireWeapon_Released()
+{
+	CombatComponent->Initiate_FireWeapon_Released();
+}
+
+void AShooterCharacter::Input_AimWeapon_Pressed()
+{
+	CombatComponent->Initiate_Aim_Pressed();
+}
+
+void AShooterCharacter::Input_AimWeapon_Released()
+{
+	CombatComponent->Initiate_Aim_Released();
+}
+
