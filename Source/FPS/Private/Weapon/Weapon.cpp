@@ -3,6 +3,7 @@
 
 #include "Weapon/Weapon.h"
 
+#include "GameFramework/Pawn.h"
 #include "Interfaces/PlayerInterface.h"
 
 
@@ -47,7 +48,7 @@ USkeletalMeshComponent* AWeapon::GetMesh3P() const
 void AWeapon::AttachToOwningPawn() const
 {
 	APawn* OwningPawn = GetInstigator();
-	if (!IsValid(OwningPawn) || OwningPawn->Implements<UPlayerInterface>()) return;
+	if (!IsValid(OwningPawn) || !OwningPawn->Implements<UPlayerInterface>()) return;
 	
 	SetMeshVisibilities(OwningPawn);
 	

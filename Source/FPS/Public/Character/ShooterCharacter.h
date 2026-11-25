@@ -30,8 +30,15 @@ public:
 	virtual USkeletalMeshComponent* GetMesh3P_Implementation() const override;
 	/** ~PlayerInterface */
 
-protected:
 	virtual void BeginPlay() override;
+	virtual void BeginDestroy() override;
+	
+	
+	
+protected:
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS|Combat")
+	TObjectPtr<UCombatComponent> CombatComponent;
 	
 private:
 	
@@ -41,9 +48,6 @@ private:
 	void Input_FireWeapon_Released();
 	void Input_AimWeapon_Pressed();
 	void Input_AimWeapon_Released();
-	
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UCombatComponent> CombatComponent;
 	
 	// 1st person view (arms)
 	UPROPERTY(VisibleAnywhere)
