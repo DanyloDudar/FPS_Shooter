@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
+#include "Data/WeaponData.h"
 
 AShooterCharacter::AShooterCharacter()
 {
@@ -68,6 +69,32 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	ShooterInputComponent->BindAction(AimWeaponAction, ETriggerEvent::Completed, this, &ThisClass::Input_AimWeapon_Released);
 	ShooterInputComponent->BindAction(ReloadWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_ReloadWeapon);
 	
+}
+
+void AShooterCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	if (IsValid(CombatComponent))
+	{
+		CombatComponent->SpawnInventory();
+	}
+}
+
+FName AShooterCharacter::GetWeaponAttachPoint_Implementation(const FGameplayTag& WeaponType) const
+{
+	checkf(CombatComponent->WeaponData, TEXT("No Weapon Data Assets - Please fill out BP_ShooterCharacter"));
+	return CombatComponent->WeaponData->GripPoints.FindChecked(WeaponType);
+}
+
+USkeletalMeshComponent* AShooterCharacter::GetMesh1P_Implementation() const
+{
+	return Mesh1P;
+}
+
+USkeletalMeshComponent* AShooterCharacter::GetMesh3P_Implementation() const
+{
+	// Default mesh
+	return GetMesh();
 }
 
 void AShooterCharacter::Input_CycleWeapon()
