@@ -9,6 +9,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
 #include "Data/WeaponData.h"
+#include "Weapon/Weapon.h"
 
 AShooterCharacter::AShooterCharacter()
 {
@@ -64,10 +65,45 @@ void AShooterCharacter::BeginDestroy()
 	}
 }
 
+FRotator AShooterCharacter::GetFixedAimRotation() const
+{
+	FRotator AimRotation = GetBaseAimRotation();
+	if (AimRotation.Pitch > 90.f && !IsLocallyControlled())
+	{
+		// map pitch from [270, 360) to [-90, 0] 
+		const FVector2D InRange(270.f, 360.f);
+		const FVector2D OutRange(-90.f, 0.f);
+		AimRotation.Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AimRotation.Pitch);
+	}
+	
+	return AimRotation;
+	
+}
+
 
 void AShooterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	CalculateFABRIK_SocketTransform();
+}
+
+void AShooterCharacter::CalculateFABRIK_SocketTransform()
+{
+	if (IsValid(CombatComponent) && IsValid(CombatComponent->CurrentWeapon) && IsValid(CombatComponent->CurrentWeapon->GetMesh3P()))
+	{
+		FABRIK_SocketTransform = CombatComponent->CurrentWeapon->GetMesh3P()->GetSocketTransform("FABRIK_Socket", RTS_World);
+		FVector OutLocation;
+		FRotator OutRotation;
+		GetMesh()->TransformFromBoneSpace(
+			"hand_r", 
+			FABRIK_SocketTransform.GetLocation(), 
+			FABRIK_SocketTransform.GetRotation().Rotator(), 
+			OutLocation, 
+			OutRotation);
+		FABRIK_SocketTransform.SetLocation(OutLocation);
+		FABRIK_SocketTransform.SetRotation(OutRotation.Quaternion());
+	}
 }
 
 void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -142,4 +178,6 @@ void AShooterCharacter::Input_AimWeapon_Released()
 	CombatComponent->Initiate_Aim_Released();
 	OnAim(false);
 }
+
+
 

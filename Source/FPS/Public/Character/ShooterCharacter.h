@@ -33,6 +33,12 @@ public:
 	virtual void BeginPlay() override;
 	virtual void BeginDestroy() override;
 	
+	UFUNCTION(BlueprintCallable)
+	FRotator GetFixedAimRotation() const;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "FPS|FABRIK")
+	FTransform FABRIK_SocketTransform;
+	
 	
 	
 protected:
@@ -57,6 +63,8 @@ private:
 	void Input_FireWeapon_Released();
 	void Input_AimWeapon_Pressed();
 	void Input_AimWeapon_Released();
+	
+	void CalculateFABRIK_SocketTransform();
 	
 	// 1st person view (arms)
 	UPROPERTY(VisibleAnywhere)
