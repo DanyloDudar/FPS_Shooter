@@ -5,12 +5,19 @@
 
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
+#include "Animation/AnimMontage.h"
+#include "Animation/AnimInstance.h"
+#include "Data/WeaponData.h"
+#include "Interfaces/PlayerInterface.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Weapon/Weapon.h"
+
 
 
 UCombatComponent::UCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	TraceLength = 20'000;
 
 }
 
@@ -43,22 +50,59 @@ void UCombatComponent::Initiate_CycleWeapon()
 
 void UCombatComponent::Initiate_FireWeapon_Pressed()
 {
-	GEngine->AddOnScreenDebugMessage(
-		-1, 
-		5.f, 
-		FColor::Cyan, 
-		TEXT("CombatComponent.cpp : Paaaff"), 
-		false);
+	Local_FireWeapon();
+}
+
+void UCombatComponent::Local_FireWeapon()
+{
+	if (!IsValid(CurrentWeapon)) return;
+	ensure(IsValid(WeaponData)); 
+	UAnimMontage* Montage1P = WeaponData->FirstPersonMontages.FindChecked(CurrentWeapon->WeaponType).FireMontage;
+	USkeletalMeshComponent* Mesh1P = IPlayerInterface::Execute_GetMesh1P(GetOwner());
+	if (IsValid(Montage1P) && IsValid(Mesh1P))
+	{
+		Mesh1P->GetAnimInstance()->Montage_Play(Montage1P);
+	}
+	
+	FHitResult HitResult;
+	CurrentWeapon->WeaponTrace(HitResult, TraceLength);
+	
+	EPhysicalSurface ImpactSurfaceType = 
+		HitResult.PhysMaterial.IsValid(false) ?  
+		HitResult.PhysMaterial->SurfaceType.GetValue() : SurfaceType1;
+	CurrentWeapon->LocalFire(HitResult.ImpactPoint, HitResult.ImpactNormal, ImpactSurfaceType, true);
+	
+	Server_FireWeapon(HitResult);
+}
+
+void UCombatComponent::Server_FireWeapon_Implementation(const FHitResult& HitResult)
+{
+	Multicast_FireWeapon(HitResult);
+}
+
+void UCombatComponent::Multicast_FireWeapon_Implementation(const FHitResult& HitResult)
+{
+	APawn* OwningPawn = Cast<APawn>(GetOwner());
+	if (OwningPawn->IsLocallyControlled())
+	{
+		// do locally-controlled stuff.
+	}
+	else
+	{
+		ensure(IsValid(WeaponData)); 
+		UAnimMontage* Montage3P = WeaponData->ThirdPersonMontages.FindChecked(CurrentWeapon->WeaponType).FireMontage;
+		USkeletalMeshComponent* Mesh3P = IPlayerInterface::Execute_GetMesh3P(GetOwner());
+		if (IsValid(Montage3P) && IsValid(Mesh3P))
+		{
+			Mesh3P->GetAnimInstance()->Montage_Play(Montage3P);
+		}
+	}
+	
 }
 
 void UCombatComponent::Initiate_FireWeapon_Released()
 {
-	GEngine->AddOnScreenDebugMessage(
-		-1, 
-		5.f, 
-		FColor::Cyan, 
-		TEXT("CombatComponent.cpp : Smoking..."), 
-		false);
+	
 }
 
 void UCombatComponent::Initiate_ReloadWeapon()
@@ -92,6 +136,8 @@ void UCombatComponent::Local_Aim(bool bPressed)
 {
 	bAiming = bPressed;
 }
+
+
 
 void UCombatComponent::Equip(AWeapon* Weapon)
 {

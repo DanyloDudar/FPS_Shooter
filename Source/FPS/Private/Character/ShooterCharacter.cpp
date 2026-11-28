@@ -125,7 +125,7 @@ void AShooterCharacter::CalculateTurnInPlaceParameters(float DeltaTime)
 		
 		FRotator AimRotation = GetBaseAimRotation();
 		FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(GetVelocity());
-		FRotator DeltaOffset = UKismetMathLibrary::NormalizedDeltaRotator(AimRotation, MovementRotation);
+		FRotator DeltaOffset = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation, AimRotation);
 		MovementOffsetYaw = DeltaOffset.Yaw;
 		TurningStatus = ETurningInPlace::NotTurning;
 	}
