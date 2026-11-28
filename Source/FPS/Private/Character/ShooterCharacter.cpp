@@ -9,6 +9,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
 #include "Data/WeaponData.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Weapon/Weapon.h"
 
 AShooterCharacter::AShooterCharacter()
@@ -45,7 +46,7 @@ AShooterCharacter::AShooterCharacter()
 	CombatComponent->SetIsReplicated(true);
 	
 	DefaultFieldOfView = 90.f;
-	
+	TurningStatus = ETurningInPlace::NotTurning;
 }
 
 void AShooterCharacter::BeginPlay()
@@ -63,6 +64,7 @@ void AShooterCharacter::BeginDestroy()
 	{
 		CombatComponent->DestroyInventory();
 	}
+	StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
 }
 
 FRotator AShooterCharacter::GetFixedAimRotation() const
@@ -80,13 +82,80 @@ FRotator AShooterCharacter::GetFixedAimRotation() const
 	
 }
 
+bool AShooterCharacter::HasCurrentWeapon() const
+{
+	return IsValid(CombatComponent) && CombatComponent->CurrentWeapon != nullptr;
+}
+
 
 void AShooterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
+	CalculateTurnInPlaceParameters(DeltaTime);
 	CalculateFABRIK_SocketTransform();
 }
+
+void AShooterCharacter::CalculateTurnInPlaceParameters(float DeltaTime)
+{
+	FVector Velocity = GetVelocity();
+	Velocity.Z = 0.f;
+	float Speed = Velocity.Size();
+	bool bIsInAir = GetCharacterMovement()->IsFalling();
+	
+	if (Speed == 0.f && !bIsInAir) //Standing still && not jumping
+	{
+		FRotator CurrentAimRotation(0.f, GetBaseAimRotation().Yaw, 0.f);
+		// StartingAimRotation initially set in BeginPlay
+		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, StartingAimRotation);
+		AO_Yaw = DeltaAimRotation.Yaw;
+		
+		if (TurningStatus == ETurningInPlace::NotTurning)
+		{
+			InterpAO_Yaw = AO_Yaw;
+		}
+		
+		TurnInPlace(DeltaTime); // interpolates the InterpAO_Yaw value to zero.
+	}
+		
+	if (Speed > 0.f || bIsInAir)
+	{
+		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		AO_Yaw = 0.f;
+		
+		FRotator AimRotation = GetBaseAimRotation();
+		FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(GetVelocity());
+		FRotator DeltaOffset = UKismetMathLibrary::NormalizedDeltaRotator(AimRotation, MovementRotation);
+		MovementOffsetYaw = DeltaOffset.Yaw;
+		TurningStatus = ETurningInPlace::NotTurning;
+	}
+	AO_Yaw *=-1.f;
+	
+}
+
+void AShooterCharacter::TurnInPlace(float DeltaTime)
+{
+	if (AO_Yaw > 90.f)
+	{
+		TurningStatus = ETurningInPlace::Right;
+	}
+	else if (AO_Yaw < -90.f)
+	{
+		TurningStatus = ETurningInPlace::Left;
+	}
+	if (TurningStatus != ETurningInPlace::NotTurning) // we are turning
+	{
+		InterpAO_Yaw = FMath::FInterpTo(InterpAO_Yaw, 0.f, DeltaTime, 4.0f);
+		AO_Yaw = InterpAO_Yaw;
+		 if (FMath::Abs(AO_Yaw) < 5.f)
+		 {
+		 	TurningStatus = ETurningInPlace::NotTurning;
+		 	StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		 }
+	}
+		
+}
+
 
 void AShooterCharacter::CalculateFABRIK_SocketTransform()
 {
@@ -95,7 +164,7 @@ void AShooterCharacter::CalculateFABRIK_SocketTransform()
 		FABRIK_SocketTransform = CombatComponent->CurrentWeapon->GetMesh3P()->GetSocketTransform("FABRIK_Socket", RTS_World);
 		FVector OutLocation;
 		FRotator OutRotation;
-		GetMesh()->TransformFromBoneSpace(
+		GetMesh()->TransformToBoneSpace(
 			"hand_r", 
 			FABRIK_SocketTransform.GetLocation(), 
 			FABRIK_SocketTransform.GetRotation().Rotator(), 
@@ -105,6 +174,7 @@ void AShooterCharacter::CalculateFABRIK_SocketTransform()
 		FABRIK_SocketTransform.SetRotation(OutRotation.Quaternion());
 	}
 }
+
 
 void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {

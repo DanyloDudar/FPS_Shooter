@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Interfaces/PlayerInterface.h"
+#include "ShooterTypes/ShooterTypes.h"
 #include "ShooterCharacter.generated.h"
 
 class UInputAction;
@@ -39,7 +40,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "FPS|FABRIK")
 	FTransform FABRIK_SocketTransform;
 	
-	
+	UFUNCTION(BlueprintCallable)
+	bool HasCurrentWeapon() const;
+
+
 	
 protected:
 	
@@ -55,6 +59,15 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnAim(bool IsAiming);
 	
+	UPROPERTY(BlueprintReadOnly, Category = "FPS|TurnInPlace")
+	float AO_Yaw;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "FPS|Strafing")
+	float MovementOffsetYaw;;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "FPS|TurnInPlace")
+	ETurningInPlace TurningStatus;
+	
 private:
 	
 	void Input_CycleWeapon();
@@ -65,6 +78,11 @@ private:
 	void Input_AimWeapon_Released();
 	
 	void CalculateFABRIK_SocketTransform();
+	void CalculateTurnInPlaceParameters(float DeltaTime);
+	void TurnInPlace(float DeltaTime);
+	
+	FRotator StartingAimRotation;
+	float InterpAO_Yaw;
 	
 	// 1st person view (arms)
 	UPROPERTY(VisibleAnywhere)
